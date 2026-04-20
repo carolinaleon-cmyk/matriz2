@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Matriz de Alineación Meso-Microcurricular</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --g:#1a5c3a;--g2:#2e7d52;--g3:#4caf80;--g4:#e8f5ee;--g5:#c8e6d4;
+  --ink:#1c1c1e;--ink2:#48484a;--ink3:#8e8e93;
+  --bg:#f2f2f7;--card:#ffffff;
+  --border:#d1d1d6;--border2:#e5e5ea;
+  --red:#c0392b;--red-bg:#fdf0ef;
+  --radius:10px;--radius-lg:16px;
+  --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
+  --shadow-lg:0 8px 30px rgba(0,0,0,.10);
+}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;font-size:14px;line-height:1.55}
+
+/* ─── TOPBAR ─── */
+.topbar{background:var(--g);padding:0 2rem;display:flex;align-items:center;height:56px;gap:1rem;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.topbar-logo{display:flex;align-items:center;gap:10px;flex:1}
+.topbar-logo svg{flex-shrink:0}
+.topbar-title{color:#fff;font-size:15px;font-weight:600;line-height:1.2}
+.topbar-sub{color:rgba(255,255,255,.65);font-size:11px;margin-top:1px}
+.topbar-badge{background:rgba(255,255,255,.15);color:#fff;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;border:1px solid rgba(255,255,255,.25)}
+
+/* ─── LAYOUT ─── */
+.shell{display:grid;grid-template-columns:260px 1fr;min-height:calc(100vh - 56px);gap:0}
+.sidebar{background:var(--card);border-right:1px solid var(--border2);padding:1.5rem 0;position:sticky;top:56px;height:calc(100vh - 56px);overflow-y:auto}
+.main{padding:2rem 2.5rem;max-width:840px}
+
+/* ─── SIDEBAR ─── */
+.sidebar-label{font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--ink3);text-transform:uppercase;padding:0 1.25rem;margin-bottom:.5rem}
+.sidebar-item{display:flex;align-items:center;gap:10px;padding:9px 1.25rem;cursor:pointer;transition:all .15s;border-left:3px solid transparent;user-select:none}
+.sidebar-item:hover{background:#f7f7f8}
+.sidebar-item.active{background:var(--g4);border-left-color:var(--g2);color:var(--g)}
+.sidebar-item.done .step-dot{background:var(--g2)!important;color:#fff}
+.sidebar-item.done .step-num{display:none}
+.sidebar-item.done .step-check{display:flex}
+.step-dot{width:26px;height:26px;border-radius:50%;background:var(--border2);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:700;color:var(--ink3);transition:all .15s}
+.sidebar-item.active .step-dot{background:var(--g2);color:#fff}
+.step-check{display:none;align-items:center;justify-content:center;width:100%;height:100%}
+.step-label{font-size:13px;color:var(--ink2);font-weight:500}
+.sidebar-item.active .step-label{color:var(--g);font-weight:600}
+
+.sidebar-sep{height:1px;background:var(--border2);margin:1rem 1.25rem}
+
+.progress-pill{margin:0 1.25rem 1.5rem;background:var(--g4);border-radius:var(--radius);padding:10px 14px}
+.progress-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.progress-pct{font-size:12px;font-weight:700;color:var(--g)}
+.progress-step{font-size:11px;color:var(--ink3)}
+.progress-track{height:4px;background:#c8e6d4;border-radius:2px}
+.progress-bar{height:100%;background:var(--g2);border-radius:2px;transition:width .35s ease}
+
+/* ─── SECTION ─── */
+.section{display:none}.section.active{display:block}
+.sec-header{margin-bottom:1.5rem}
+.sec-number{font-size:11px;font-weight:700;color:var(--g2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px}
+.sec-title{font-size:20px;font-weight:700;color:var(--ink)}
+.sec-desc{font-size:13px;color:var(--ink3);margin-top:4px}
+
+/* ─── CARDS ─── */
+.form-card{background:var(--card);border-radius:var(--radius-lg);border:1px solid var(--border2);box-shadow:var(--shadow);padding:1.5rem;margin-bottom:1rem}
+.card-title{font-size:12px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:1rem;display:flex;align-items:center;gap:6px}
+.card-title::before{content:'';width:3px;height:14px;background:var(--g2);border-radius:2px;display:inline-block}
+
+/* ─── FIELDS ─── */
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.fcol{grid-column:1/-1}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:12px;font-weight:600;color:var(--ink2)}
+.hint{font-size:11px;color:var(--ink3);margin-top:-2px;line-height:1.4}
+.field input,.field select,.field textarea{
+  font-size:13px;color:var(--ink);
+  background:var(--bg);border:1.5px solid var(--border);
+  border-radius:8px;padding:9px 12px;width:100%;
+  font-family:inherit;transition:border-color .15s,box-shadow .15s
+}
+.field input:focus,.field select:focus,.field textarea:focus{
+  outline:none;border-color:var(--g2);background:#fff;
+  box-shadow:0 0 0 3px rgba(46,125,82,.12)
+}
+.field textarea{resize:vertical;min-height:82px}
+.field select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238e8e93' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+.meta-row{display:flex;gap:12px;flex-wrap:wrap;background:var(--g4);border:1px solid var(--g5);border-radius:var(--radius);padding:10px 14px;margin-bottom:1rem}
+.meta-row .field{flex:1;min-width:180px}
+
+/* ─── RADIO ─── */
+.radio-g{display:flex;gap:10px;flex-wrap:wrap;margin-top:5px}
+.radio-g label{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--ink2);cursor:pointer;padding:7px 14px;border:1.5px solid var(--border);border-radius:8px;transition:all .15s;user-select:none}
+.radio-g label:hover{border-color:var(--g3);background:#f0faf4}
+.radio-g label:has(input:checked){border-color:var(--g2);background:var(--g4);color:var(--g)}
+.radio-g input[type=radio]{accent-color:var(--g2);width:15px;height:15px}
+
+/* ─── SUB SECTION ─── */
+.sub-card{background:var(--g4);border:1px solid var(--g5);border-radius:var(--radius);padding:12px 14px;margin-top:10px;display:none}
+.sub-card.open{display:block}
+.sub-title{font-size:11px;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.sub-card textarea,.sub-card input{font-size:13px;color:var(--ink);background:#fff;border:1.5px solid var(--g5);border-radius:8px;padding:9px 12px;width:100%;margin-bottom:10px;font-family:inherit;resize:vertical;min-height:72px}
+.sub-card textarea:focus,.sub-card input:focus{outline:none;border-color:var(--g2);box-shadow:0 0 0 3px rgba(46,125,82,.12)}
+
+/* ─── BUTTONS ─── */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;font-size:13px;font-weight:600;border-radius:8px;border:1.5px solid var(--border);background:var(--card);color:var(--ink2);cursor:pointer;transition:all .15s;font-family:inherit}
+.btn:hover{background:var(--bg);border-color:#aaa}
+.btn svg{flex-shrink:0}
+.btn-primary{background:var(--g2);color:#fff;border-color:var(--g2)}
+.btn-primary:hover{background:var(--g);border-color:var(--g)}
+.btn-ghost{background:transparent;border-color:transparent;color:var(--ink3)}
+.btn-ghost:hover{background:var(--bg);color:var(--ink)}
+.btn-danger{background:var(--red-bg);color:var(--red);border-color:#f5c6c2}
+.btn-danger:hover{background:#fce8e6}
+
+/* ─── NAV ROW ─── */
+.nav-row{display:flex;justify-content:space-between;align-items:center;margin-top:2rem;padding-top:1.5rem;border-top:1px solid var(--border2)}
+.nav-right{display:flex;gap:8px}
+
+/* ─── SAVE BANNER ─── */
+.save-banner{background:var(--g4);border:1px solid var(--g5);border-radius:var(--radius-lg);padding:1.25rem 1.5rem;margin-top:1.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+.save-banner-text h3{font-size:14px;font-weight:700;color:var(--g)}
+.save-banner-text p{font-size:12px;color:var(--ink3);margin-top:2px}
+
+/* ─── RECORDS ─── */
+.records-wrap{margin-top:2.5rem}
+.records-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
+.records-hdr h2{font-size:17px;font-weight:700}
+.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1.25rem}
+.stat-c{background:var(--card);border:1px solid var(--border2);border-radius:var(--radius);padding:12px 16px;box-shadow:var(--shadow)}
+.stat-l{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3)}
+.stat-v{font-size:28px;font-weight:800;color:var(--g2);margin-top:2px}
+
+.rec-card{background:var(--card);border:1px solid var(--border2);border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:8px;box-shadow:var(--shadow);display:flex;align-items:flex-start;gap:1rem}
+.rec-icon{width:40px;height:40px;background:var(--g4);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.rec-body{flex:1;min-width:0}
+.rec-name{font-size:14px;font-weight:700;color:var(--ink)}
+.rec-meta{font-size:12px;color:var(--ink3);margin-top:2px}
+.rec-badges{margin-top:6px;display:flex;flex-wrap:wrap;gap:5px}
+.badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px;background:var(--g4);color:var(--g)}
+.badge-gray{background:#f2f2f7;color:var(--ink3)}
+.rec-actions{display:flex;gap:6px;flex-shrink:0}
+
+.empty-state{text-align:center;padding:3rem 1rem;color:var(--ink3);font-size:13px;border:1.5px dashed var(--border);border-radius:var(--radius-lg)}
+
+/* ─── EXPORT BOX ─── */
+.export-box{background:var(--g);border-radius:var(--radius-lg);padding:1.5rem;margin-top:1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+.export-box h3{font-size:14px;font-weight:700;color:#fff}
+.export-box p{font-size:12px;color:rgba(255,255,255,.7);margin-top:3px}
+.export-box .btn-white{background:#fff;color:var(--g);border-color:#fff;font-weight:700}
+.export-box .btn-white:hover{background:#f0faf4}
+
+/* ─── TOAST ─── */
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;background:#1c1c1e;color:#fff;font-size:13px;font-weight:500;padding:11px 18px;border-radius:10px;box-shadow:var(--shadow-lg);opacity:0;transform:translateY(6px);transition:all .25s;pointer-events:none;z-index:9999;max-width:300px}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.err{background:var(--red)}
+
+/* ─── DIVIDER ─── */
+.divider{height:1px;background:var(--border2);margin:1.25rem 0}
+
+@media(max-width:720px){
+  .shell{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .main{padding:1.25rem}
+  .fgrid{grid-template-columns:1fr}
+  .stat-row{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="topbar-logo">
+    <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
+      <rect width="30" height="30" rx="8" fill="rgba(255,255,255,.15)"/>
+      <path d="M8 10h14M8 15h10M8 20h12" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="22" cy="20" r="4" fill="#4caf80"/>
+      <path d="M20.5 20l1 1 2-2" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div>
+      <div class="topbar-title">Matriz de Alineación Meso-Microcurricular</div>
+      <div class="topbar-sub">Metodología de Evaluación Curricular</div>
+    </div>
+  </div>
+  <div class="topbar-badge" id="records-count-badge" style="display:none">0 registros</div>
+</header>
+
+<div class="shell">
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="progress-pill">
+    <div class="progress-row">
+      <span class="progress-pct" id="prog-pct">12%</span>
+      <span class="progress-step" id="prog-step">1 de 8 secciones</span>
+    </div>
+    <div class="progress-track"><div class="progress-bar" id="prog-bar" style="width:12.5%"></div></div>
+  </div>
+
+  <div class="sidebar-label">Secciones del formulario</div>
+
+  <div class="sidebar-item active" id="nav-0" onclick="goSection(0)">
+    <div class="step-dot"><span class="step-num">1</span><span class="step-check"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></span></div>
+    <span class="step-label">Identificación</span>
+  </div>
+  <div class="sidebar-item" id="nav-1" onclick="goSection(1)">
+    <div class="step-dot"><span class="step-num">2</span><span class="step-check"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></span></div>
+    <span class="step-label">Fines del Curso</span>
+  </div>
+  <div class="sidebar-item" id="nav-2" onclick="goSection(2)">
+    <div class="step-dot"><span class="step-num">3</span><span class="step-check"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></span></div>
+    <span class="step-label">Recursos RAC</span>
+  </div>
+  <div class="sidebar-item" id="nav-3" onclick="goSection(3)">
+    <div class="step-dot"><span class="step-num">4</span><span class="step-check"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></span></div>
+    <span class="step-label">Didáctica</span>
+  </div>
+  <div class="sidebar-item" id="nav-4" onclick="goSection(4)">
+    <div class="step-dot"><span class="step-num">5</span><span class="step-check"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></span></div>
+    <span class="step-label">Evaluación</span>
+  </div>
+  <div class="sidebar-item" id="nav-5" onclick="goSection(5)">
+    <div class="step-dot"><span class="step-num">6</span><span class="step-check"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></span></div>
+    <span class="step-label">Comp. Práctico</span>
+  </div>
+  <div class="sidebar-item" id="nav-6" onclick="goSection(6)">
+    <div class="step-dot"><span class="step-num">7</span><span class="step-check"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></span></div>
+    <span class="step-label">Articulación</span>
+  </div>
+  <div class="sidebar-item" id="nav-7" onclick="goSection(7)">
+    <div class="step-dot"><span class="step-num">8</span><span class="step-check"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></span></div>
+    <span class="step-label">Síntesis</span>
+  </div>
+
+  <div class="sidebar-sep"></div>
+  <div class="sidebar-label">Acciones</div>
+  <div class="sidebar-item" onclick="exportExcel()" style="color:var(--g2)">
+    <div class="step-dot" style="background:var(--g4)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--g2)" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></div>
+    <span class="step-label" style="color:var(--g2)">Exportar Excel</span>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- ── SEC 0: Identificación ── -->
+  <div class="section active" id="sec-0">
+    <div class="sec-header">
+      <div class="sec-number">Sección 1 · Identificación</div>
+      <div class="sec-title">Identificación del Curso</div>
+      <div class="sec-desc">Datos generales del curso dentro del programa académico</div>
+    </div>
+
+    <div class="meta-row">
+      <div class="field"><label>Escuela</label><input id="f-escuela" placeholder="Nombre de la escuela"></div>
+      <div class="field"><label>Programa</label><input id="f-programa" placeholder="Nombre del programa académico"></div>
+    </div>
+
+    <div class="form-card">
+      <div class="card-title">Datos del curso</div>
+      <div class="fgrid">
+        <div class="field fcol"><label>Nombre del Curso *</label><input id="f-nombre" placeholder="Ej: Cálculo Diferencial"></div>
+        <div class="field"><label>Código del Curso</label><input id="f-codigo" placeholder="Ej: MAT-101"></div>
+        <div class="field"><label>Número de Créditos</label><input id="f-creditos" type="number" min="1" max="20" placeholder="4"></div>
+        <div class="field"><label>Último año/periodo de acreditación</label><input id="f-acreditacion" placeholder="Ej: 2023-1"></div>
+        <div class="field"><label>Tipo de Curso</label>
+          <select id="f-tipo"><option value="">Seleccione...</option><option>Teórico</option><option>Metodológico</option><option>Práctico</option><option>Teórico-Práctico</option></select>
+        </div>
+        <div class="field"><label>Nivel de Formación</label>
+          <select id="f-nivel"><option value="">Seleccione...</option><option>Técnico</option><option>Tecnológico</option><option>Profesional Universitario</option><option>Especialización</option><option>Maestría</option><option>Doctorado</option></select>
+        </div>
+        <div class="field fcol"><label>Componente de Formación</label><input id="f-componente" placeholder="Ej: Básico, Profesional, Electivo..."></div>
+      </div>
+    </div>
+
+    <div class="form-card">
+      <div class="card-title">Núcleos</div>
+      <div class="fgrid">
+        <div class="field fcol"><label>Núcleo Integrador de Problemas</label><textarea id="f-nucleo" placeholder="Describa el núcleo integrador..."></textarea></div>
+        <div class="field fcol"><label>Núcleo Problémico al que se vincula el curso</label><textarea id="f-nucleo-prob" placeholder="Describa el núcleo problémico..."></textarea></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SEC 1: Fines del Curso ── -->
+  <div class="section" id="sec-1">
+    <div class="sec-header">
+      <div class="sec-number">Sección 2 · Mesocurricular</div>
+      <div class="sec-title">Fines del Curso</div>
+      <div class="sec-desc">Competencias, resultados de aprendizaje y propósito formativo</div>
+    </div>
+    <div class="form-card">
+      <div class="card-title">Competencias y resultados</div>
+      <div class="fgrid">
+        <div class="field fcol"><label>Competencias disciplinares que responden al núcleo problémico</label><textarea id="f-competencias-disc" placeholder="Liste las competencias disciplinares..."></textarea></div>
+        <div class="field fcol"><label>Resultados de Aprendizaje de Programa (RAP)</label><textarea id="f-rap" placeholder="Describa los RAP..."></textarea></div>
+        <div class="field fcol"><label>Propósito de Formación del Curso</label><textarea id="f-proposito" placeholder="¿Cuál es el propósito de formación?"></textarea></div>
+        <div class="field fcol"><label>Resultado(s) de Aprendizaje del Curso (RAC)</label><textarea id="f-rac" placeholder="Enumere los RAC del curso..."></textarea></div>
+      </div>
+    </div>
+    <div class="form-card">
+      <div class="card-title">Análisis y rutas</div>
+      <div class="fgrid">
+        <div class="field fcol">
+          <label>Categorías de análisis sobre los fines del curso y sus RAC</label>
+          <div class="hint">Niveles cognitivos del RAC · Articulación NP-Competencia-RAC · Aporte del RAC a competencias genéricas</div>
+          <textarea id="f-categorias-rac" placeholder="Análisis de categorías..."></textarea>
+        </div>
+        <div class="field fcol">
+          <label>Ruta(s) Formativa(s)</label>
+          <div class="hint">Competencias genéricas, componente práctico, investigación, innovación, SISSU</div>
+          <textarea id="f-rutas" placeholder="Describa las rutas formativas..."></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SEC 2: Recursos RAC ── -->
+  <div class="section" id="sec-2">
+    <div class="sec-header">
+      <div class="sec-number">Sección 3 · Recursos</div>
+      <div class="sec-title">Recursos para el Proceso del RAC</div>
+      <div class="sec-desc">Análisis de suficiencia, pertinencia y diversidad de recursos</div>
+    </div>
+    <div class="form-card">
+      <div class="fgrid">
+        <div class="field fcol"><label>RAC de referencia</label><textarea id="f-rac2" placeholder="Referencie el RAC específico..."></textarea></div>
+        <div class="field fcol">
+          <label>Categorías de análisis sobre los recursos</label>
+          <div class="hint">Suficiencia, pertinencia, diversidad · Pertinencia del número de recursos frente a horas de trabajo independiente</div>
+          <textarea id="f-cat-recursos" placeholder="Análisis de los recursos..."></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SEC 3: Didáctica ── -->
+  <div class="section" id="sec-3">
+    <div class="sec-header">
+      <div class="sec-number">Sección 4 · Didáctica</div>
+      <div class="sec-title">Estrategia Didáctica</div>
+      <div class="sec-desc">Metodología, secuencia y estrategias de acompañamiento</div>
+    </div>
+    <div class="form-card">
+      <div class="card-title">Estrategia Metodológica</div>
+      <div class="fgrid">
+        <div class="field fcol"><label>Estrategia Metodológica (EM)</label><textarea id="f-em" placeholder="Describa la estrategia metodológica..."></textarea></div>
+        <div class="field fcol">
+          <label>Categorías de análisis sobre la EM</label>
+          <div class="hint">Secuencia didáctica: coherencia, número de actividades, pertinencia al RAC, claridad en orientaciones</div>
+          <textarea id="f-cat-em" placeholder="Análisis de la estrategia metodológica..."></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="form-card">
+      <div class="card-title">Acompañamiento</div>
+      <div class="fgrid">
+        <div class="field fcol"><label>Estrategias de Acompañamiento</label><textarea id="f-acompanamiento" placeholder="¿Cuáles son las estrategias de acompañamiento?"></textarea></div>
+        <div class="field fcol">
+          <label>Integración con actividades de vida académica</label>
+          <div class="hint">¿Cómo se integran las estrategias con otros actores? (si aplica)</div>
+          <textarea id="f-integracion-ac" placeholder="Describa la integración con vida académica..."></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SEC 4: Evaluación ── -->
+  <div class="section" id="sec-4">
+    <div class="sec-header">
+      <div class="sec-number">Sección 5 · Evaluación</div>
+      <div class="sec-title">Evaluación del Aprendizaje</div>
+      <div class="sec-desc">Evidencias, criterios y análisis del sistema evaluativo</div>
+    </div>
+    <div class="form-card">
+      <div class="fgrid">
+        <div class="field fcol"><label>Evidencias del Aprendizaje</label><textarea id="f-evidencias" placeholder="¿Cuáles son las evidencias de aprendizaje?"></textarea></div>
+        <div class="field fcol"><label>Criterios de Evaluación</label><textarea id="f-criterios" placeholder="Enumere los criterios de evaluación..."></textarea></div>
+        <div class="field fcol">
+          <label>Categorías de análisis sobre la evaluación</label>
+          <div class="hint">Coherencia entre evidencias y criterios · Medibles · Con énfasis en forma y contenido</div>
+          <textarea id="f-cat-eval" placeholder="Análisis de la evaluación..."></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SEC 5: Componente Práctico ── -->
+  <div class="section" id="sec-5">
+    <div class="sec-header">
+      <div class="sec-number">Sección 6 · Práctica</div>
+      <div class="sec-title">Gestión Didáctica del Componente Práctico</div>
+      <div class="sec-desc">Escenarios, estrategias y ponderación del componente práctico</div>
+    </div>
+    <div class="form-card">
+      <div class="card-title">Escenario</div>
+      <div class="fgrid">
+        <div class="field fcol">
+          <label>Escenario del Componente Práctico</label>
+          <div class="hint">Nombre: Simulador, remoto o in situ</div>
+          <input id="f-escenario" placeholder="Nombre del escenario...">
+        </div>
+        <div class="field fcol">
+          <label>Características del Escenario</label>
+          <div class="hint">Recursos: nombre, especificación técnica, uso, alcance y propósito</div>
+          <textarea id="f-carac-escenario" placeholder="Descripción detallada del escenario..."></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="form-card">
+      <div class="card-title">Estrategias y ponderación</div>
+      <div class="fgrid">
+        <div class="field fcol"><label>Estrategia de Aprendizaje dentro del CP</label><textarea id="f-estrategia-cp" placeholder="Estrategia de aprendizaje en el componente práctico..."></textarea></div>
+        <div class="field fcol"><label>Estrategias de Acompañamiento Docente (CP)</label><textarea id="f-acomp-cp" placeholder="Estrategias de acompañamiento..."></textarea></div>
+        <div class="field fcol">
+          <label>¿Las estrategias movilizan la consecución de los RAC y RAP?</label>
+          <div class="radio-g">
+            <label><input type="radio" name="r-moviliza" value="Sí"> Sí</label>
+            <label><input type="radio" name="r-moviliza" value="No"> No</label>
+            <label><input type="radio" name="r-moviliza" value="Parcialmente"> Parcialmente</label>
+          </div>
+        </div>
+        <div class="field">
+          <label>Puntaje actividades prácticas en evaluación del curso (%)</label>
+          <input id="f-puntaje-cp" type="number" min="0" max="100" placeholder="Ej: 30">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SEC 6: Articulación ── -->
+  <div class="section" id="sec-6">
+    <div class="sec-header">
+      <div class="sec-number">Sección 7 · Articulación</div>
+      <div class="sec-title">Articulación Curricular</div>
+      <div class="sec-desc">Continuum formativo y aliados estratégicos del programa</div>
+    </div>
+    <div class="form-card">
+      <div class="card-title">Continuum Formativo</div>
+      <div class="field">
+        <label>¿El curso se inserta en un continuum formativo?</label>
+        <div class="radio-g">
+          <label><input type="radio" name="r-continuum" value="Sí" onchange="toggleSub('continuum-detail','r-continuum','Sí')"> Sí</label>
+          <label><input type="radio" name="r-continuum" value="No" onchange="toggleSub('continuum-detail','r-continuum','Sí')"> No</label>
+        </div>
+        <div class="sub-card" id="continuum-detail">
+          <div class="sub-title">¿Cómo se inserta el curso en el continuum formativo?</div>
+          <textarea id="f-continuum" placeholder="Describa la inserción en el continuum formativo..."></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="form-card">
+      <div class="card-title">Aliados Estratégicos</div>
+      <div class="field">
+        <label>¿El programa cuenta con aliados estratégicos?</label>
+        <div class="radio-g">
+          <label><input type="radio" name="r-aliados" value="Sí" onchange="toggleSub('aliados-detail','r-aliados','Sí')"> Sí</label>
+          <label><input type="radio" name="r-aliados" value="No" onchange="toggleSub('aliados-detail','r-aliados','Sí')"> No</label>
+        </div>
+        <div class="sub-card" id="aliados-detail">
+          <div class="sub-title">¿Qué aliados estratégicos apoyan el curso?</div>
+          <textarea id="f-aliados" placeholder="Liste los aliados estratégicos..."></textarea>
+          <div class="sub-title" style="margin-top:6px">¿Cuál es el aporte de los aliados?</div>
+          <textarea id="f-aporte-aliados" placeholder="Describa el aporte de los aliados..."></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SEC 7: Síntesis ── -->
+  <div class="section" id="sec-7">
+    <div class="sec-header">
+      <div class="sec-number">Sección 8 · Cierre</div>
+      <div class="sec-title">Síntesis y Cierre</div>
+      <div class="sec-desc">Observaciones finales, fecha y documentación del proceso</div>
+    </div>
+    <div class="form-card">
+      <div class="fgrid">
+        <div class="field fcol">
+          <label>Observaciones del proceso realizado</label>
+          <div class="hint">Hallazgos detallados y propuestas de mejora para el curso analizado</div>
+          <textarea id="f-observaciones" style="min-height:110px" placeholder="Hallazgos y propuestas de mejora..."></textarea>
+        </div>
+        <div class="field"><label>Fecha de Diligenciamiento (periodo/año)</label><input id="f-fecha" placeholder="Ej: 2024-1"></div>
+        <div class="field"><label>Director / Diseñador del Curso</label><input id="f-director" placeholder="Nombre completo"></div>
+        <div class="field fcol"><label>Link a grabación y acta de sesión de Red Curricular</label><input id="f-link" type="url" placeholder="https://..."></div>
+      </div>
+    </div>
+
+    <div class="save-banner">
+      <div class="save-banner-text">
+        <h3>¿Todo listo? Guarda el registro del curso</h3>
+        <p>El registro quedará disponible para exportar a Excel o descargar como ficha técnica PDF.</p>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="saveRecord()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Guardar registro
+        </button>
+        <button class="btn" onclick="saveAndNew()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+          Guardar y agregar otro
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- NAV -->
+  <div class="nav-row">
+    <button class="btn btn-ghost" id="btn-prev" onclick="prevSection()" style="visibility:hidden">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
+      Anterior
+    </button>
+    <div class="nav-right">
+      <button class="btn btn-primary" id="btn-next" onclick="nextSection()">
+        Siguiente
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── RECORDS ── -->
+  <div class="records-wrap" id="records-wrap" style="display:none">
+    <div class="records-hdr">
+      <h2>Registros guardados</h2>
+      <button class="btn btn-ghost" onclick="scrollToTop()" style="font-size:12px">+ Nuevo curso</button>
+    </div>
+    <div class="stat-row">
+      <div class="stat-c"><div class="stat-l">Total cursos</div><div class="stat-v" id="st-total">0</div></div>
+      <div class="stat-c"><div class="stat-l">Comp. práctico</div><div class="stat-v" id="st-cp">0</div></div>
+      <div class="stat-c"><div class="stat-l">Con aliados</div><div class="stat-v" id="st-aliados">0</div></div>
+    </div>
+    <div id="rec-list"></div>
+    <div class="export-box">
+      <div>
+        <h3>Exportar todos los registros</h3>
+        <p>Descarga el consolidado completo en formato Excel (.xlsx)</p>
+      </div>
+      <button class="btn btn-white" onclick="exportExcel()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--g)" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        Descargar Excel
+      </button>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var cur=0, TOTAL=8, records=[];
+var NAMES=['Identificación del Curso','Fines del Curso','Recursos RAC','Didáctica','Evaluación','Componente Práctico','Articulación','Síntesis y Cierre'];
+
+function goSection(i){
+  document.querySelectorAll('.section').forEach(function(s,idx){s.classList.toggle('active',idx===i)});
+  document.querySelectorAll('.sidebar-item[id^=nav-]').forEach(function(b,idx){
+    b.classList.toggle('active',idx===i);
+    b.classList.toggle('done',idx<i);
+  });
+  cur=i;
+  document.getElementById('btn-prev').style.visibility=i===0?'hidden':'visible';
+  document.getElementById('btn-next').style.display=i===TOTAL-1?'none':'inline-flex';
+  var pct=Math.round(((i+1)/TOTAL)*100);
+  document.getElementById('prog-bar').style.width=pct+'%';
+  document.getElementById('prog-pct').textContent=pct+'%';
+  document.getElementById('prog-step').textContent=(i+1)+' de '+TOTAL+' secciones';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function nextSection(){if(cur<TOTAL-1)goSection(cur+1)}
+function prevSection(){if(cur>0)goSection(cur-1)}
+function scrollToTop(){goSection(0);window.scrollTo({top:0,behavior:'smooth'})}
+
+function toggleSub(id,name,val){
+  var checked=document.querySelector('input[name="'+name+'"]:checked');
+  document.getElementById(id).classList.toggle('open',checked&&checked.value===val);
+}
+
+function gv(id){var e=document.getElementById(id);return e?e.value.trim():''}
+function gr(name){var e=document.querySelector('input[name="'+name+'"]:checked');return e?e.value:''}
+
+function build(){
+  return{
+    'Escuela':gv('f-escuela'),'Programa':gv('f-programa'),
+    'Nombre del Curso':gv('f-nombre'),'Código del Curso':gv('f-codigo'),
+    'Número de Créditos':gv('f-creditos'),'Último periodo de acreditación':gv('f-acreditacion'),
+    'Tipo de Curso':gv('f-tipo'),'Nivel de Formación':gv('f-nivel'),
+    'Componente de Formación':gv('f-componente'),'Núcleo Integrador de Problemas':gv('f-nucleo'),
+    'Núcleo Problémico':gv('f-nucleo-prob'),'Competencias Disciplinares':gv('f-competencias-disc'),
+    'RAP':gv('f-rap'),'Propósito de Formación':gv('f-proposito'),
+    'RAC':gv('f-rac'),'Categorías de Análisis RAC':gv('f-categorias-rac'),
+    'Rutas Formativas':gv('f-rutas'),'RAC (Recursos)':gv('f-rac2'),
+    'Categorías Análisis Recursos':gv('f-cat-recursos'),'Estrategia Metodológica':gv('f-em'),
+    'Categorías Análisis EM':gv('f-cat-em'),'Estrategias de Acompañamiento':gv('f-acompanamiento'),
+    'Integración vida académica':gv('f-integracion-ac'),'Evidencias del Aprendizaje':gv('f-evidencias'),
+    'Criterios de Evaluación':gv('f-criterios'),'Categorías Análisis Evaluación':gv('f-cat-eval'),
+    'Escenario CP':gv('f-escenario'),'Características Escenario':gv('f-carac-escenario'),
+    'Estrategia Aprendizaje CP':gv('f-estrategia-cp'),'Acompañamiento Docente CP':gv('f-acomp-cp'),
+    'Estrategias movilizan RAC/RAP':gr('r-moviliza'),'Puntaje actividades CP':gv('f-puntaje-cp'),
+    'Continuum formativo':gr('r-continuum'),'Descripción Continuum':gv('f-continuum'),
+    'Aliados estratégicos':gr('r-aliados'),'Qué aliados':gv('f-aliados'),
+    'Aporte aliados':gv('f-aporte-aliados'),'Observaciones':gv('f-observaciones'),
+    'Fecha diligenciamiento':gv('f-fecha'),'Director del Curso':gv('f-director'),
+    'Link sesión Red Curricular':gv('f-link')
+  };
+}
+
+function saveRecord(){
+  if(!gv('f-nombre')){toast('El nombre del curso es obligatorio',true);goSection(0);return}
+  records.push(build());
+  render();
+  toast('Registro guardado: '+gv('f-nombre'));
+  document.getElementById('records-wrap').style.display='block';
+}
+function saveAndNew(){saveRecord();if(gv('f-nombre')){clear();goSection(0)}}
+
+function clear(){
+  ['f-escuela','f-programa','f-nombre','f-codigo','f-creditos','f-acreditacion','f-componente',
+   'f-nucleo','f-nucleo-prob','f-competencias-disc','f-rap','f-proposito','f-rac','f-categorias-rac',
+   'f-rutas','f-rac2','f-cat-recursos','f-em','f-cat-em','f-acompanamiento','f-integracion-ac',
+   'f-evidencias','f-criterios','f-cat-eval','f-escenario','f-carac-escenario','f-estrategia-cp',
+   'f-acomp-cp','f-puntaje-cp','f-continuum','f-aliados','f-aporte-aliados','f-observaciones',
+   'f-fecha','f-director','f-link'].forEach(function(id){var e=document.getElementById(id);if(e)e.value=''});
+  document.querySelectorAll('input[type=radio]').forEach(function(r){r.checked=false});
+  document.getElementById('continuum-detail').classList.remove('open');
+  document.getElementById('aliados-detail').classList.remove('open');
+  document.querySelectorAll('select').forEach(function(s){s.selectedIndex=0});
+}
+
+function delRecord(i){
+  if(!confirm('¿Eliminar "'+records[i]['Nombre del Curso']+'"?'))return;
+  records.splice(i,1);render();
+  if(!records.length)document.getElementById('records-wrap').style.display='none';
+}
+
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+function render(){
+  var list=document.getElementById('rec-list');
+  var badge=document.getElementById('records-count-badge');
+  badge.style.display=records.length?'inline-block':'none';
+  badge.textContent=records.length+' registro'+(records.length!==1?'s':'');
+
+  if(!records.length){
+    list.innerHTML='<div class="empty-state">No hay registros guardados aún</div>';
+    document.getElementById('st-total').textContent='0';
+    document.getElementById('st-cp').textContent='0';
+    document.getElementById('st-aliados').textContent='0';
+    return;
+  }
+  document.getElementById('st-total').textContent=records.length;
+  document.getElementById('st-cp').textContent=records.filter(function(r){return r['Escenario CP']}).length;
+  document.getElementById('st-aliados').textContent=records.filter(function(r){return r['Aliados estratégicos']==='Sí'}).length;
+
+  list.innerHTML=records.map(function(r,i){
+    return '<div class="rec-card">'
+      +'<div class="rec-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--g2)" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg></div>'
+      +'<div class="rec-body">'
+        +'<div class="rec-name">'+esc(r['Nombre del Curso'])+'</div>'
+        +'<div class="rec-meta">'+(r['Código del Curso']||'—')+(r['Escuela']?' · '+esc(r['Escuela']):'')+(r['Programa']?' · '+esc(r['Programa']):'')+'</div>'
+        +'<div class="rec-badges">'
+          +(r['Tipo de Curso']?'<span class="badge">'+esc(r['Tipo de Curso'])+'</span>':'')
+          +(r['Nivel de Formación']?'<span class="badge">'+esc(r['Nivel de Formación'])+'</span>':'')
+          +(r['Número de Créditos']?'<span class="badge badge-gray">'+r['Número de Créditos']+' créditos</span>':'')
+          +(r['Director del Curso']?'<span class="badge badge-gray">'+esc(r['Director del Curso'])+'</span>':'')
+        +'</div>'
+      +'</div>'
+      +'<div class="rec-actions">'
+        +'<button class="btn" onclick="downloadPDF('+i+')" title="Descargar ficha técnica PDF" style="font-size:12px;padding:7px 12px">'
+          +'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>'
+          +' Ficha PDF'
+        +'</button>'
+        +'<button class="btn btn-danger" onclick="delRecord('+i+')" style="font-size:12px;padding:7px 12px">Eliminar</button>'
+      +'</div>'
+    +'</div>';
+  }).join('');
+}
+
+/* ─── PDF FICHA TÉCNICA ─── */
+function downloadPDF(idx){
+  var r=records[idx];
+  var {jsPDF}=window.jspdf;
+  var doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  var W=210, H=297, mg=18, cw=W-mg*2;
+  var y=0;
+
+  // Colors
+  var GREEN=[26,92,58], GREEN2=[46,125,82], GREEN_LIGHT=[232,245,238];
+  var INK=[28,28,30], INK2=[72,72,74], INK3=[142,142,147];
+  var WHITE=[255,255,255], GRAY_BG=[242,242,247];
+
+  function newPage(){
+    doc.addPage();
+    y=0;
+    drawHeader();
+    y=36;
+  }
+
+  function checkY(need){if(y+need>H-20)newPage()}
+
+  function drawHeader(){
+    // Top green bar
+    doc.setFillColor.apply(doc,GREEN);
+    doc.rect(0,0,W,28,'F');
+    // Accent strip
+    doc.setFillColor.apply(doc,GREEN2);
+    doc.rect(0,26,W,3,'F');
+    // Institution info
+    doc.setTextColor.apply(doc,WHITE);
+    doc.setFontSize(7);doc.setFont('helvetica','normal');
+    doc.text('METODOLOGÍA DE EVALUACIÓN CURRICULAR',mg,9);
+    doc.setFontSize(11);doc.setFont('helvetica','bold');
+    doc.text('Ficha Técnica de Alineación Meso-Microcurricular',mg,17);
+    doc.setFontSize(7.5);doc.setFont('helvetica','normal');
+    var meta=[];
+    if(r['Escuela'])meta.push('Escuela: '+r['Escuela']);
+    if(r['Programa'])meta.push('Programa: '+r['Programa']);
+    if(meta.length)doc.text(meta.join('   ·   '),mg,23);
+    // Date top right
+    doc.setFontSize(7);
+    var fecha=r['Fecha diligenciamiento']||new Date().toLocaleDateString('es-CO');
+    doc.text(fecha,W-mg,9,{align:'right'});
+  }
+
+  function sectionTitle(title, icon){
+    checkY(14);
+    doc.setFillColor.apply(doc,GREEN_LIGHT);
+    doc.roundedRect(mg,y,cw,9,1.5,1.5,'F');
+    doc.setFillColor.apply(doc,GREEN2);
+    doc.rect(mg,y,3,9,'F');
+    doc.setTextColor.apply(doc,GREEN);
+    doc.setFontSize(8.5);doc.setFont('helvetica','bold');
+    doc.text(title,mg+7,y+6);
+    y+=13;
+  }
+
+  function fieldRow(label,value,full){
+    if(!value)return;
+    var lines=doc.splitTextToSize(value,full?cw-4:cw/2-6);
+    var lineH=4.2;
+    var blockH=6+lines.length*lineH+4;
+    checkY(blockH);
+    var bw=full?cw:cw/2-2;
+    // Label bg
+    doc.setFillColor.apply(doc,GRAY_BG);
+    doc.roundedRect(mg,y,bw,5.5,1,1,'F');
+    doc.setTextColor.apply(doc,INK3);
+    doc.setFontSize(7);doc.setFont('helvetica','bold');
+    doc.text(label.toUpperCase(),mg+3,y+3.8);
+    y+=6;
+    // Value
+    doc.setTextColor.apply(doc,INK);
+    doc.setFontSize(8.5);doc.setFont('helvetica','normal');
+    doc.text(lines,mg+3,y+3.5);
+    y+=lines.length*lineH+5;
+  }
+
+  function twoFields(l1,v1,l2,v2){
+    if(!v1&&!v2)return;
+    var half=cw/2-2;
+    var lines1=v1?doc.splitTextToSize(v1,half-4):[];
+    var lines2=v2?doc.splitTextToSize(v2,half-4):[];
+    var rows=Math.max(lines1.length,lines2.length);
+    var blockH=12+rows*4.2;
+    checkY(blockH);
+    // Col 1
+    if(v1){
+      doc.setFillColor.apply(doc,GRAY_BG);
+      doc.roundedRect(mg,y,half,5.5,1,1,'F');
+      doc.setTextColor.apply(doc,INK3);doc.setFontSize(7);doc.setFont('helvetica','bold');
+      doc.text(l1.toUpperCase(),mg+3,y+3.8);
+      doc.setTextColor.apply(doc,INK);doc.setFontSize(8.5);doc.setFont('helvetica','normal');
+      doc.text(lines1,mg+3,y+9.5);
+    }
+    // Col 2
+    if(v2){
+      var x2=mg+half+4;
+      doc.setFillColor.apply(doc,GRAY_BG);
+      doc.roundedRect(x2,y,half,5.5,1,1,'F');
+      doc.setTextColor.apply(doc,INK3);doc.setFontSize(7);doc.setFont('helvetica','bold');
+      doc.text(l2.toUpperCase(),x2+3,y+3.8);
+      doc.setTextColor.apply(doc,INK);doc.setFontSize(8.5);doc.setFont('helvetica','normal');
+      doc.text(lines2,x2+3,y+9.5);
+    }
+    y+=10+rows*4.2+2;
+  }
+
+  function pillRow(label,value){
+    if(!value)return;
+    checkY(10);
+    doc.setFillColor.apply(doc,GREEN_LIGHT);
+    doc.roundedRect(mg,y,cw,8,2,2,'F');
+    doc.setTextColor.apply(doc,INK3);doc.setFontSize(7);doc.setFont('helvetica','bold');
+    doc.text(label.toUpperCase()+':',mg+4,y+5.3);
+    var lw=doc.getTextWidth(label.toUpperCase()+':')+mg+8;
+    doc.setTextColor.apply(doc,GREEN);doc.setFontSize(8.5);doc.setFont('helvetica','bold');
+    doc.text(value,lw,y+5.3);
+    y+=11;
+  }
+
+  function divider(){
+    checkY(5);
+    doc.setDrawColor.apply(doc,[229,229,234]);
+    doc.setLineWidth(0.3);
+    doc.line(mg,y,W-mg,y);
+    y+=4;
+  }
+
+  function footers(){
+    var pageCount=doc.internal.getNumberOfPages();
+    for(var i=1;i<=pageCount;i++){
+      doc.setPage(i);
+      doc.setFillColor(26,92,58);
+      doc.rect(0,H-10,W,10,'F');
+      doc.setTextColor(255,255,255);doc.setFontSize(6.5);doc.setFont('helvetica','normal');
+      doc.text('Matriz de Alineación Meso-Microcurricular  ·  Metodología de Evaluación Curricular',mg,H-4);
+      doc.text('Página '+i+' de '+pageCount,W-mg,H-4,{align:'right'});
+    }
+  }
+
+  // ── BUILD PDF ──
+  drawHeader(); y=36;
+
+  // Identification strip
+  doc.setFillColor.apply(doc,WHITE);
+  doc.setDrawColor.apply(doc,[209,209,214]);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(mg,y,cw,22,2,2,'FD');
+  // Course name large
+  doc.setTextColor.apply(doc,GREEN);
+  doc.setFontSize(13);doc.setFont('helvetica','bold');
+  var nameLines=doc.splitTextToSize(r['Nombre del Curso']||'Sin nombre',cw-6);
+  doc.text(nameLines,mg+4,y+8);
+  var nameH=nameLines.length*6;
+  doc.setTextColor.apply(doc,INK2);doc.setFontSize(7.5);doc.setFont('helvetica','normal');
+  var pills=[];
+  if(r['Código del Curso'])pills.push(r['Código del Curso']);
+  if(r['Tipo de Curso'])pills.push(r['Tipo de Curso']);
+  if(r['Nivel de Formación'])pills.push(r['Nivel de Formación']);
+  if(r['Número de Créditos'])pills.push(r['Número de Créditos']+' créditos');
+  if(pills.length)doc.text(pills.join('   ·   '),mg+4,y+nameH+8);
+  y+=26;
+
+  // Identificación
+  sectionTitle('1. Identificación del Curso');
+  twoFields('Componente de Formación',r['Componente de Formación'],'Último periodo acreditación',r['Último periodo de acreditación']);
+  twoFields('Escuela',r['Escuela'],'Programa',r['Programa']);
+  fieldRow('Núcleo Integrador de Problemas',r['Núcleo Integrador de Problemas'],true);
+  fieldRow('Núcleo Problémico',r['Núcleo Problémico'],true);
+  divider();
+
+  // Fines
+  sectionTitle('2. Fines del Curso (Mesocurricular)');
+  fieldRow('Competencias Disciplinares',r['Competencias Disciplinares'],true);
+  fieldRow('Resultados de Aprendizaje de Programa (RAP)',r['RAP'],true);
+  fieldRow('Propósito de Formación del Curso',r['Propósito de Formación'],true);
+  fieldRow('Resultado(s) de Aprendizaje del Curso (RAC)',r['RAC'],true);
+  fieldRow('Categorías de Análisis sobre los fines del curso y sus RAC',r['Categorías de Análisis RAC'],true);
+  fieldRow('Rutas Formativas',r['Rutas Formativas'],true);
+  divider();
+
+  // Recursos
+  sectionTitle('3. Recursos para el Proceso del RAC');
+  fieldRow('RAC de referencia',r['RAC (Recursos)'],true);
+  fieldRow('Categorías de Análisis sobre Recursos',r['Categorías Análisis Recursos'],true);
+  divider();
+
+  // Didáctica
+  sectionTitle('4. Didáctica');
+  fieldRow('Estrategia Metodológica (EM)',r['Estrategia Metodológica'],true);
+  fieldRow('Categorías de Análisis sobre la EM',r['Categorías Análisis EM'],true);
+  fieldRow('Estrategias de Acompañamiento',r['Estrategias de Acompañamiento'],true);
+  fieldRow('Integración con Vida Académica',r['Integración vida académica'],true);
+  divider();
+
+  // Evaluación
+  sectionTitle('5. Evaluación del Aprendizaje');
+  fieldRow('Evidencias del Aprendizaje',r['Evidencias del Aprendizaje'],true);
+  fieldRow('Criterios de Evaluación',r['Criterios de Evaluación'],true);
+  fieldRow('Categorías de Análisis sobre la Evaluación',r['Categorías Análisis Evaluación'],true);
+  divider();
+
+  // CP
+  sectionTitle('6. Gestión Didáctica del Componente Práctico');
+  twoFields('Escenario del CP',r['Escenario CP'],'Puntaje en evaluación del curso',r['Puntaje actividades CP']?r['Puntaje actividades CP']+'%':'');
+  fieldRow('Características del Escenario',r['Características Escenario'],true);
+  fieldRow('Estrategia de Aprendizaje (CP)',r['Estrategia Aprendizaje CP'],true);
+  fieldRow('Acompañamiento Docente (CP)',r['Acompañamiento Docente CP'],true);
+  pillRow('¿Las estrategias movilizan RAC/RAP?',r['Estrategias movilizan RAC/RAP']);
+  divider();
+
+  // Articulación
+  sectionTitle('7. Articulación Curricular');
+  pillRow('¿Continuum formativo?',r['Continuum formativo']);
+  fieldRow('Descripción del continuum formativo',r['Descripción Continuum'],true);
+  pillRow('¿Aliados estratégicos?',r['Aliados estratégicos']);
+  fieldRow('Aliados estratégicos',r['Qué aliados'],true);
+  fieldRow('Aporte de los aliados',r['Aporte aliados'],true);
+  divider();
+
+  // Síntesis
+  sectionTitle('8. Síntesis y Cierre');
+  fieldRow('Observaciones del proceso realizado',r['Observaciones'],true);
+  twoFields('Fecha de diligenciamiento',r['Fecha diligenciamiento'],'Director / Diseñador del Curso',r['Director del Curso']);
+  if(r['Link sesión Red Curricular']){
+    checkY(10);
+    doc.setFillColor.apply(doc,GRAY_BG);
+    doc.roundedRect(mg,y,cw,5.5,1,1,'F');
+    doc.setTextColor.apply(doc,INK3);doc.setFontSize(7);doc.setFont('helvetica','bold');
+    doc.text('LINK SESIÓN RED CURRICULAR Y ACTA:',mg+3,y+3.8);
+    doc.setTextColor.apply(doc,[26,92,58]);doc.setFontSize(7.5);doc.setFont('helvetica','normal');
+    doc.text(r['Link sesión Red Curricular'].substring(0,80)+(r['Link sesión Red Curricular'].length>80?'...':''),mg+3,y+10);
+    y+=14;
+  }
+
+  // Firma box
+  checkY(28);
+  doc.setDrawColor.apply(doc,[209,209,214]);doc.setLineWidth(0.3);
+  doc.setFillColor.apply(doc,WHITE);
+  doc.roundedRect(mg,y,cw,24,2,2,'FD');
+  doc.setTextColor.apply(doc,INK3);doc.setFontSize(7);doc.setFont('helvetica','normal');
+  doc.text('Firma del Director del Curso',mg+10,y+16);
+  doc.text('Firma del Evaluador',mg+cw/2+10,y+16);
+  doc.setDrawColor.apply(doc,INK3);doc.setLineWidth(0.3);
+  doc.line(mg+4,y+13,mg+cw/2-4,y+13);
+  doc.line(mg+cw/2+4,y+13,W-mg-4,y+13);
+  y+=28;
+
+  footers();
+
+  var fname='Ficha_'+((r['Nombre del Curso']||'curso').replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,''))+'.pdf';
+  doc.save(fname);
+  toast('Ficha PDF descargada');
+}
+
+/* ─── EXCEL ─── */
+function exportExcel(){
+  if(!records.length){toast('No hay registros para exportar',true);return}
+  var headers=Object.keys(records[0]);
+  var wsData=[headers].concat(records.map(function(r){return headers.map(function(h){return r[h]||''})}));
+  var wb=XLSX.utils.book_new();
+  var ws=XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols']=headers.map(function(){return{wch:32}});
+  for(var c=0;c<headers.length;c++){
+    var cell=XLSX.utils.encode_cell({r:0,c:c});
+    if(ws[cell])ws[cell].s={fill:{patternType:'solid',fgColor:{rgb:'1A5C3A'}},font:{bold:true,color:{rgb:'FFFFFF'}},alignment:{wrapText:true,vertical:'center',horizontal:'center'}};
+  }
+  XLSX.utils.book_append_sheet(wb,ws,'Matriz Meso-Microcurricular');
+  var tipos=['Teórico','Metodológico','Práctico','Teórico-Práctico'];
+  var resumen=[['RESUMEN'],[''],['Indicador','Valor'],
+    ['Total cursos',records.length],
+    ['Con componente práctico',records.filter(function(r){return r['Escenario CP']}).length],
+    ['Con aliados estratégicos',records.filter(function(r){return r['Aliados estratégicos']==='Sí'}).length],
+    ['Con continuum formativo',records.filter(function(r){return r['Continuum formativo']==='Sí'}).length],
+    [''],['Por tipo de curso','']
+  ].concat(tipos.map(function(t){return[t,records.filter(function(r){return r['Tipo de Curso']===t}).length]}))
+  .concat([[''],['Exportado',new Date().toLocaleDateString('es-CO')]]);
+  var wsR=XLSX.utils.aoa_to_sheet(resumen);
+  wsR['!cols']=[{wch:44},{wch:18}];
+  XLSX.utils.book_append_sheet(wb,wsR,'Resumen');
+  XLSX.writeFile(wb,'Matriz_Meso_Microcurricular_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  toast('Excel descargado');
+}
+
+var toastT;
+function toast(msg,err){
+  var t=document.getElementById('toast');
+  t.textContent=msg;
+  t.className='toast'+(err?' err':'');
+  t.classList.add('show');
+  clearTimeout(toastT);
+  toastT=setTimeout(function(){t.classList.remove('show')},3000);
+}
+</script>
+</body>
+</html>
